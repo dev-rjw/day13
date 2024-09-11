@@ -9,6 +9,8 @@ function App() {
     const [title, setTitle] = useState("");
     const [views, setViews] = useState("");
 
+    const [selectedPostId, setSelectedPostId] = useState(null);
+
     const getPosts = async () => {
         const response = await axios.get("http://localhost:4000/posts");
         return response.data;
@@ -27,7 +29,7 @@ function App() {
     };
 
     const getComments = async (id) => {
-        const response = await axios.get("http://localhost:4000/comments/" + id);
+        const response = await axios.get("http://localhost:4000/comments?postId=" + id);
         return response.data;
     };
 
@@ -50,8 +52,9 @@ function App() {
         isLoading: commentsIsLoading,
         isError: commentsIsError,
     } = useQuery({
-        queryKey: ["comments", id],
-        queryFn: getComments(id),
+        queryKey: ["comments", selectedPostId],
+        queryFn: ({ queryKey }) => getComments(queryKey[1]),
+        enabled: !!selectedPostId,
     });
 
     const mutation = useMutation({
@@ -60,6 +63,10 @@ function App() {
             queryClient.invalidateQueries(["posts"]);
         },
     });
+
+    const handleComments = (id) => {
+        setSelectedPostId(id);
+    };
 
     if (isLoading) {
         return <div>로딩중입니다...</div>;
@@ -77,6 +84,14 @@ function App() {
         return <div>오류가 발생하였습니다...</div>;
     }
 
+    if (commentsIsLoading) {
+        return <div>로딩중입니다...</div>;
+    }
+
+    if (commentsIsError) {
+        return <div>오류가 발생하였습니다...</div>;
+    }
+
     return (
         <>
             <input value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -85,7 +100,13 @@ function App() {
             {data.map((post) => {
                 return (
                     <div key={post.id}>
-                        {post.title} (views: {post.views})<button onClick={() => getComments(post.id)}>댓글보기</button>
+                        {post.title} (views: {post.views})<button onClick={() => handleComments(post.id)}>댓글보기</button>
+                        <div>
+                            {selectedPostId === post.id &&
+                                commentsData?.map((comment) => {
+                                    return <div key={comment.id}>{comment.text}</div>;
+                                })}
+                        </div>
                     </div>
                 );
             })}
