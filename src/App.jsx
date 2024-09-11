@@ -1,35 +1,60 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import axios from "axios";
+import "./App.css";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 function App() {
-  const [count, setCount] = useState(0)
+    const queryClient = useQueryClient();
 
-  return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    const [title, setTitle] = useState("");
+    const [views, setViews] = useState("");
+
+    const getPosts = async () => {
+        const response = await axios.get("http://localhost:4000/posts");
+        return response.data;
+    };
+
+    const addPost = async (newPost) => {
+        await axios.post("http://localhost:4000/posts", {
+            title: newPost.title,
+            views: newPost.views,
+        });
+    };
+
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ["posts"],
+        queryFn: getPosts,
+    });
+
+    const mutation = useMutation({
+        mutationFn: addPost,
+        onSuccess: () => {
+            queryClient.invalidateQueries(["posts"]);
+        },
+    });
+
+    if (isLoading) {
+        return <div>로딩중입니다...</div>;
+    }
+
+    if (isError) {
+        return <div>오류가 발생하였습니다...</div>;
+    }
+
+    return (
+        <>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input value={views} onChange={(e) => setViews(e.target.value)} />
+            <button onClick={() => mutation.mutate({ title, views })}>추가</button>
+            {data.map((post) => {
+                return (
+                    <div key={post.id}>
+                        {post.title} (views: {post.views})
+                    </div>
+                );
+            })}
+        </>
+    );
 }
 
-export default App
+export default App;
